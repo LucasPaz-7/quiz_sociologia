@@ -1,127 +1,226 @@
-// Variáveis globais
-let isCreator = false;
-let roomCode = '';
-let currentQuestion = 0;
-let score = 0;
-let quiz = [];
-let prizes = [1000, 5000, 10000, 50000, 100000, 500000, 1000000]; // Recompensas chamativas
-
-// Ir para a página de criação do quiz
-function goToCreateQuiz() {
-    const username = document.getElementById('username').value;
-    if (!username) return alert("Digite seu nome!");
-    localStorage.setItem('username', username);
-    window.location.href = 'create-quiz.html';
-}
-
-// Adicionar pergunta ao quiz
-function addQuestion() {
-    const question = document.getElementById('question').value;
-    const options = [
-        document.getElementById('option1').value,
-        document.getElementById('option2').value,
-        document.getElementById('option3').value,
-        document.getElementById('option4').value
-    ];
-    const correct = document.getElementById('correctOption').value;
-    if (!question || options.some(opt => !opt) || !correct) return alert("Preencha todos os campos!");
-    
-    const correctAnswer = options[parseInt(correct) - 1];
-    quiz.push({ question, options, correct: correctAnswer });
-    
-    // Exibir perguntas adicionadas
-    const list = document.getElementById('questionsList');
-    list.innerHTML += `<p>Pergunta: ${question}</p>`;
-    
-    // Limpar campos
-    document.getElementById('question').value = '';
-    document.getElementById('option1').value = '';
-    document.getElementById('option2').value = '';
-    document.getElementById('option3').value = '';
-    document.getElementById('option4').value = '';
-    document.getElementById('correctOption').value = '';
-}
-
-// Criar sala
-function createRoom() {
-    if (quiz.length === 0) return alert("Adicione pelo menos uma pergunta!");
-    isCreator = true;
-    roomCode = Math.random().toString(36).substring(7); // Código aleatório
-    localStorage.setItem('quiz', JSON.stringify(quiz));
-    window.location.href = `quiz.html?room=${roomCode}&creator=true`;
-}
-
-// Entrar na sala
-function joinRoom() {
-    const username = document.getElementById('username').value;
-    const code = document.getElementById('roomCode').value;
-    if (!username || !code) return alert("Digite seu nome e o código!");
-    roomCode = code;
-    window.location.href = `quiz.html?room=${code}`;
-}
-
-// Configuração inicial do quiz
-if (window.location.pathname.includes('quiz.html')) {
-    const params = new URLSearchParams(window.location.search);
-    roomCode = params.get('room');
-    isCreator = params.get('creator') === 'true';
-    
-    document.getElementById('roomTitle').textContent = `Sala: ${roomCode}`;
-    if (!isCreator) {
-        document.getElementById('startButton').style.display = 'none';
+// Array de perguntas sobre Estado Liberal e Estado Socialista
+const questions = [
+    {
+        question: "Qual movimento filosófico influenciou o surgimento do Estado Liberal?",
+        options: ["Renascimento", "Iluminismo", "Romantismo", "Existencialismo"],
+        answer: "b",
+        hint: "Este movimento enfatiza a razão e a ciência."
+    },
+    {
+        question: "Em que eventos históricos o Estado Liberal se fortaleceu?",
+        options: ["Revolução Russa e Guerra Fria", "Revolução Francesa e Revolução Industrial", "Guerra dos Trinta Anos e Tratado de Vestfália", "Independência dos EUA e Guerra Civil Americana"],
+        answer: "b",
+        hint: "Esses eventos marcaram o fim do absolutismo e o início da era industrial."
+    },
+    {
+        question: "Qual é o princípio econômico defendido pelo Estado Liberal?",
+        options: ["Planejamento centralizado", "Intervencionismo estatal", "Laissez-faire", "Economia mista"],
+        answer: "c",
+        hint: "Este princípio defende a mínima interferência do Estado na economia."
+    },
+    {
+        question: "Quem são os principais teóricos que inspiraram o Estado Socialista?",
+        options: ["Adam Smith e David Ricardo", "John Locke e Montesquieu", "Karl Marx e Friedrich Engels", "Max Weber e Émile Durkheim"],
+        answer: "c",
+        hint: "Esses teóricos criticaram o capitalismo e propuseram uma sociedade sem classes."
+    },
+    {
+        question: "No Estado Socialista, quem controla os meios de produção?",
+        options: ["Indivíduos privados", "Empresas multinacionais", "O Estado", "Cooperativas de trabalhadores"],
+        answer: "c",
+        hint: "Neste modelo, a propriedade é coletiva."
+    },
+    {
+        question: "Qual é o objetivo principal do Estado Socialista?",
+        options: ["Maximizar lucros", "Promover a livre concorrência", "Acabar com as desigualdades sociais", "Estimular o empreendedorismo"],
+        answer: "c",
+        hint: "Este modelo busca uma distribuição mais equitativa de recursos."
+    },
+    {
+        question: "Qual modelo econômico é associado ao Estado Liberal?",
+        options: ["Socialismo", "Capitalismo", "Mercantilismo", "Feudalismo"],
+        answer: "b",
+        hint: "Este modelo é baseado na propriedade privada e na livre iniciativa."
+    },
+    {
+        question: "O que o Estado Liberal defende em termos de intervenção na economia?",
+        options: ["Intervenção total", "Intervenção moderada", "Pouca interferência", "Intervenção apenas em crises"],
+        answer: "c",
+        hint: "A ideia é que o mercado se autorregule."
+    },
+    {
+        question: "Qual é uma crítica comum ao Estado Liberal?",
+        options: ["Limita a liberdade individual", "Pode gerar desigualdades sociais", "Não permite a propriedade privada", "Centraliza o poder no Estado"],
+        answer: "b",
+        hint: "A livre concorrência pode levar a concentrações de riqueza."
+    },
+    {
+        question: "Atualmente, muitos países adotam qual tipo de modelo econômico?",
+        options: ["Estado Liberal puro", "Estado Socialista puro", "Modelo misto", "Anarquismo"],
+        answer: "c",
+        hint: "Este modelo combina elementos de ambos os sistemas."
     }
-    
-    // Carregar quiz
-    quiz = JSON.parse(localStorage.getItem('quiz')) || [];
-    
-    // Exibir escala de prêmios
-    const prizeList = document.getElementById('prizeList');
-    prizes.forEach((prize, index) => {
-        prizeList.innerHTML += `<li>Pergunta ${index + 1}: R$${prize.toLocaleString()}</li>`;
-    });
+];
+
+// Estado do quiz
+const quizState = {
+    currentQuestion: 0,
+    score: 1000, // Começa com 1000 pontos
+    helps: {
+        skip: 1,
+        hint: 1,
+        fiftyFifty: 1
+    },
+    completed: false
+};
+
+// Temporizador
+let timer;
+const timePerQuestion = 30; // 30 segundos por pergunta
+
+// Sons (arquivos correct.mp3 e wrong.mp3 devem estar na mesma pasta)
+const correctSound = new Audio('correct.mp3');
+const wrongSound = new Audio('wrong.mp3');
+
+// Função para iniciar o temporizador
+function startTimer() {
+    let timeLeft = timePerQuestion;
+    const timerDisplay = document.getElementById('timer') || document.createElement('div');
+    timerDisplay.id = 'timer';
+    document.getElementById('quiz-container').appendChild(timerDisplay);
+    timer = setInterval(() => {
+        timerDisplay.innerText = `Tempo restante: ${timeLeft}s`;
+        timeLeft--;
+        if (timeLeft < 0) {
+            clearInterval(timer);
+            checkAnswer(null); // Tempo esgotado
+        }
+    }, 1000);
 }
 
-// Iniciar o jogo
-function startGame() {
-    if (!isCreator) return;
-    document.getElementById('startButton').style.display = 'none';
-    document.getElementById('questionContainer').style.display = 'block';
-    showQuestion();
-}
-
-// Exibir pergunta
-function showQuestion() {
-    if (currentQuestion >= quiz.length) {
-        showRanking();
+// Função para carregar a pergunta
+function loadQuestion() {
+    if (quizState.completed) {
+        showAlreadyCompletedScreen();
         return;
     }
-    const q = quiz[currentQuestion];
-    document.getElementById('question').textContent = q.question;
-    const optionsDiv = document.getElementById('options');
-    optionsDiv.innerHTML = '';
-    q.options.forEach(option => {
-        const btn = document.createElement('button');
-        btn.textContent = option;
-        btn.onclick = () => checkAnswer(option, q.correct);
-        optionsDiv.appendChild(btn);
+    const question = questions[quizState.currentQuestion];
+    document.getElementById("question").innerText = question.question;
+    const options = document.querySelectorAll(".option");
+    options.forEach((option, index) => {
+        option.innerText = question.options[index];
+        option.dataset.option = String.fromCharCode(97 + index);
+        option.style.display = "block";
+        option.classList.remove('visible');
+        setTimeout(() => {
+            option.classList.add('visible');
+        }, index * 100);
     });
+    document.getElementById("score").innerText = `R$ ${quizState.score}`;
+    startTimer();
 }
 
-// Verificar resposta
-function checkAnswer(selected, correct) {
-    if (selected === correct) {
-        score = prizes[currentQuestion];
-        currentQuestion++;
-        showQuestion();
+// Função para verificar a resposta
+function checkAnswer(selectedOption) {
+    clearInterval(timer);
+    const question = questions[quizState.currentQuestion];
+    if (selectedOption === question.answer) {
+        quizState.score += 500; // +500 pontos por resposta correta
+        correctSound.play();
     } else {
-        showRanking();
+        wrongSound.play();
+        // Aqui poderia ser adicionada a lógica para a próxima equipe (simplificada por enquanto)
+    }
+    quizState.currentQuestion++;
+    if (quizState.currentQuestion < questions.length) {
+        loadQuestion();
+    } else {
+        quizState.completed = true;
+        localStorage.setItem('quizCompleted', 'true');
+        showEndScreen();
     }
 }
 
-// Exibir ranking
-function showRanking() {
-    document.getElementById('questionContainer').style.display = 'none';
-    const rankingDiv = document.getElementById('ranking');
-    rankingDiv.style.display = 'block';
-    rankingDiv.innerHTML = `<h2>Fim de Jogo!</h2><p>Sua pontuação: R$${score.toLocaleString()}</p>`;
+// Função para exibir a tela final
+function showEndScreen() {
+    const quizContainer = document.getElementById('quiz-container');
+    quizContainer.innerHTML = `
+        <h1>Fim de Jogo!</h1>
+        <p>Seu resultado final: R$ ${quizState.score}</p>
+    `;
 }
+
+// Função para exibir a tela de "já completado"
+function showAlreadyCompletedScreen() {
+    const quizContainer = document.getElementById('quiz-container');
+    quizContainer.innerHTML = `
+        <h1>Você já completou o quiz!</h1>
+        <p>Seu resultado foi salvo.</p>
+        <button id="reset">Reiniciar Quiz</button>
+    `;
+    document.getElementById('reset').addEventListener('click', () => {
+        localStorage.removeItem('quizCompleted');
+        location.reload();
+    });
+}
+
+// Eventos de clique para as opções
+document.querySelectorAll(".option").forEach(option => {
+    option.addEventListener("click", () => {
+        checkAnswer(option.dataset.option);
+    });
+});
+
+// Eventos de clique para as ajudas
+document.getElementById("skip").addEventListener("click", () => {
+    if (quizState.helps.skip > 0) {
+        quizState.helps.skip--;
+        document.getElementById("skip").innerText = `Pular (${quizState.helps.skip})`;
+        quizState.currentQuestion++;
+        if (quizState.currentQuestion < questions.length) {
+            loadQuestion();
+        } else {
+            alert("Não há mais perguntas para pular.");
+        }
+    }
+});
+
+document.getElementById("hint").addEventListener("click", () => {
+    if (quizState.helps.hint > 0) {
+        quizState.helps.hint--;
+        document.getElementById("hint").innerText = `Dica (${quizState.helps.hint})`;
+        const question = questions[quizState.currentQuestion];
+        alert(`Dica: ${question.hint}`);
+    }
+});
+
+document.getElementById("fifty-fifty").addEventListener("click", () => {
+    if (quizState.helps.fiftyFifty > 0) {
+        quizState.helps.fiftyFifty--;
+        document.getElementById("fifty-fifty").innerText = `50/50 (${quizState.helps.fiftyFifty})`;
+        const question = questions[quizState.currentQuestion];
+        const wrongOptions = question.options
+            .map((option, index) => ({ option, index }))
+            .filter(item => String.fromCharCode(97 + item.index) !== question.answer);
+        const eliminatedOptions = wrongOptions.slice(0, 2);
+        document.querySelectorAll(".option").forEach(option => {
+            const optionLetter = option.dataset.option;
+            if (eliminatedOptions.some(el => String.fromCharCode(97 + el.index) === optionLetter)) {
+                option.style.display = "none";
+            }
+        });
+    }
+});
+
+// Verificar o estado do jogo ao carregar a página
+function checkGameStatus() {
+    const gameStatus = localStorage.getItem('quizCompleted');
+    if (gameStatus === 'true') {
+        quizState.completed = true;
+        showAlreadyCompletedScreen();
+    } else {
+        loadQuestion();
+    }
+}
+
+checkGameStatus();
