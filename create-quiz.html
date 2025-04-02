@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Quiz - Jogo do Milhão</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Criar Quiz</h1>
+        <div id="quizForm">
+            <input type="text" id="question" placeholder="Digite a pergunta" required>
+            <input type="text" id="option1" placeholder="Opção 1" required>
+            <input type="text" id="option2" placeholder="Opção 2" required>
+            <input type="text" id="option3" placeholder="Opção 3" required>
+            <input type="text" id="option4" placeholder="Opção 4" required>
+            <select id="correctOption" required>
+                <option value="">Selecione a resposta correta</option>
+                <option value="1">Opção 1</option>
+                <option value="2">Opção 2</option>
+                <option value="3">Opção 3</option>
+                <option value="4">Opção 4</option>
+            </select>
+            <button onclick="addQuestion()">Adicionar Pergunta</button>
+        </div>
+        <div id="questionsList"></div>
+        <button onclick="createRoom()">Criar Sala com este Quiz</button>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
